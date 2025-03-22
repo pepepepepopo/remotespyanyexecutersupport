@@ -91,7 +91,7 @@ templateLabel.Text = "RemoteEvent: Args"
 templateLabel.Visible = false
 templateLabel.Parent = scrollingFrame
 
--- Create a template for the Copy and Run buttons
+-- Create a template for the Copy, Run, and Edit buttons
 local buttonTemplate = Instance.new("TextButton")
 buttonTemplate.Size = UDim2.new(0.1, 0, 1, 0)
 buttonTemplate.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
@@ -101,62 +101,155 @@ buttonTemplate.Text = "Copy"
 buttonTemplate.Visible = false
 buttonTemplate.Parent = scrollingFrame
 
--- Function to add a new RemoteEvent to the list
-local function addRemoteEvent(name, args)
-    local newLabel = templateLabel:Clone()
-    newLabel.Text = name .. ": " .. tostring(args)
-    newLabel.Visible = true
-    newLabel.Parent = scrollingFrame
+-- Table to store RemoteEvent data
+local remoteEventData = {}
 
-    -- Create a Copy button
-    local copyButton = buttonTemplate:Clone()
-    copyButton.Text = "Copy"
-    copyButton.Position = UDim2.new(0.8, 0, 0, 0)
-    copyButton.Visible = true
-    copyButton.Parent = newLabel
-
-    -- Copy button functionality
-    copyButton.MouseButton1Click:Connect(function()
-        local code = `game:GetService("ReplicatedStorage").RemoteEvents["{name}"]:FireServer(unpack({args}))`
-        setclipboard(code) -- Copy the code to the clipboard
-    end)
-
-    -- Create a Run button
-    local runButton = buttonTemplate:Clone()
-    runButton.Text = "Run"
-    runButton.Position = UDim2.new(0.9, 0, 0, 0)
-    runButton.Visible = true
-    runButton.Parent = newLabel
-
-    -- Run button functionality
-    runButton.MouseButton1Click:Connect(function()
-        local remote = game:GetService("ReplicatedStorage"):FindFirstChild(name)
-        if remote and remote:IsA("RemoteEvent") then
-            remote:FireServer(unpack(args))
+-- Function to update the UI with RemoteEvent data
+local function updateUI()
+    -- Clear the existing UI
+    for _, child in pairs(scrollingFrame:GetChildren()) do
+        if child:IsA("TextLabel") or child:IsA("TextButton") then
+            child:Destroy()
         end
-    end)
+    end
+
+    -- Add new entries for each RemoteEvent
+    for name, args in pairs(remoteEventData) do
+        local newLabel = templateLabel:Clone()
+        newLabel.Text = name .. ": " .. tostring(args)
+        newLabel.Visible = true
+        newLabel.Parent = scrollingFrame
+
+        -- Create a Copy button
+        local copyButton = buttonTemplate:Clone()
+        copyButton.Text = "Copy"
+        copyButton.Position = UDim2.new(0.7, 0, 0, 0)
+        copyButton.Visible = true
+        copyButton.Parent = newLabel
+
+        -- Copy button functionality
+        copyButton.MouseButton1Click:Connect(function()
+            local code = `game:GetService("ReplicatedStorage").RemoteEvents["{name}"]:FireServer(unpack({args}))`
+            setclipboard(code) -- Copy the code to the clipboard
+        end)
+
+        -- Create a Run button
+        local runButton = buttonTemplate:Clone()
+        runButton.Text = "Run"
+        runButton.Position = UDim2.new(0.8, 0, 0, 0)
+        runButton.Visible = true
+        runButton.Parent = newLabel
+
+        -- Run button functionality
+        runButton.MouseButton1Click:Connect(function()
+            local remote = game:GetService("ReplicatedStorage"):FindFirstChild(name)
+            if remote and remote:IsA("RemoteEvent") then
+                remote:FireServer(unpack(args))
+            end
+        end)
+
+        -- Create an Edit button
+        local editButton = buttonTemplate:Clone()
+        editButton.Text = "Edit"
+        editButton.Position = UDim2.new(0.9, 0, 0, 0)
+        editButton.Visible = true
+        editButton.Parent = newLabel
+
+        -- Edit button functionality
+        editButton.MouseButton1Click:Connect(function()
+            -- Create a popup frame for editing arguments
+            local editFrame = Instance.new("Frame")
+            editFrame.Size = UDim2.new(0.5, 0, 0.3, 0)
+            editFrame.Position = UDim2.new(0.25, 0, 0.35, 0)
+            editFrame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+            editFrame.BorderSizePixel = 0
+            editFrame.Parent = screenGui
+
+            -- Create a TextBox for editing arguments
+            local textBox = Instance.new("TextBox")
+            textBox.Size = UDim2.new(0.9, 0, 0.7, 0)
+            textBox.Position = UDim2.new(0.05, 0, 0.1, 0)
+            textBox.Text = tostring(args)
+            textBox.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+            textBox.TextColor3 = Color3.new(1, 1, 1)
+            textBox.Parent = editFrame
+
+            -- Create a Save button
+            local saveButton = Instance.new("TextButton")
+            saveButton.Size = UDim2.new(0.4, 0, 0.2, 0)
+            saveButton.Position = UDim2.new(0.05, 0, 0.8, 0)
+            saveButton.Text = "Save"
+            saveButton.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+            saveButton.TextColor3 = Color3.new(1, 1, 1)
+            saveButton.Parent = editFrame
+
+            -- Save button functionality
+            saveButton.MouseButton1Click:Connect(function()
+                -- Parse the new arguments
+                local success, newArgs = pcall(function()
+                    return loadstring("return " .. textBox.Text)()
+                end)
+                if success and type(newArgs) == "table" then
+                    remoteEventData[name] = newArgs
+                    newLabel.Text = name .. ": " .. tostring(newArgs)
+                else
+                    warn("Invalid arguments!")
+                end
+                editFrame:Destroy()
+            end)
+
+            -- Create a Cancel button
+            local cancelButton = Instance.new("TextButton")
+            cancelButton.Size = UDim2.new(0.4, 0, 0.2, 0)
+            cancelButton.Position = UDim2.new(0.55, 0, 0.8, 0)
+            cancelButton.Text = "Cancel"
+            cancelButton.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+            cancelButton.TextColor3 = Color3.new(1, 1, 1)
+            cancelButton.Parent = editFrame
+
+            -- Cancel button functionality
+            cancelButton.MouseButton1Click:Connect(function()
+                editFrame:Destroy()
+            end)
+        end)
+    end
 
     -- Adjust the CanvasSize of the ScrollingFrame
     scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y)
 end
 
--- Hook into all RemoteEvents
-local remoteEvents = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvents")
-if remoteEvents then
-    for _, remoteEvent in pairs(remoteEvents:GetChildren()) do
-        if remoteEvent:IsA("RemoteEvent") then
-            remoteEvent.OnClientEvent:Connect(function(...)
-                addRemoteEvent(remoteEvent.Name, {...})
-            end)
+-- Function to monitor RemoteEvents
+local function monitorRemoteEvents()
+    while true do
+        -- Check for new RemoteEvents
+        local remoteEvents = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvents")
+        if remoteEvents then
+            for _, remoteEvent in pairs(remoteEvents:GetChildren()) do
+                if remoteEvent:IsA("RemoteEvent") then
+                    -- Store the event data
+                    remoteEvent.OnClientEvent:Connect(function(...)
+                        remoteEventData[remoteEvent.Name] = {...}
+                    end)
+                end
+            end
         end
+
+        -- Update the UI
+        updateUI()
+
+        -- Wait for 0.25 seconds
+        wait(0.25)
     end
 end
 
--- Hook into future RemoteEvents
-game:GetService("ReplicatedStorage").ChildAdded:Connect(function(child)
-    if child:IsA("RemoteEvent") then
-        child.OnClientEvent:Connect(function(...)
-            addRemoteEvent(child.Name, {...})
-        end)
-    end
-end)
+-- Start monitoring RemoteEvents
+monitorRemoteEvents()
+
+
+
+
+
+
+
+
+-- MADE WITH DEEPSEEK AI
