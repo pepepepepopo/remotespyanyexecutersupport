@@ -244,12 +244,3 @@ end
 
 -- Start monitoring RemoteEvents
 monitorRemoteEvents()
-
-
-
-
-
-
-
-
--- MADE WITH DEEPSEEK AI
